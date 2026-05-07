@@ -65,6 +65,8 @@ router.post("/api/users/check", (req, res) => {
       message: "Хэрэглэгчийн нэр зөвхөн жижиг үсэг, тоо, _ агуулах ёстой.",
     });
   }
-  const isMatching = bcrypt;
+  const extingUser = users.find((user) => user.username === username);
+  const isMatching = bcrypt.compareSync(extingUser.password, password);
+  return res.send(isMatching);
 });
 export default router;
