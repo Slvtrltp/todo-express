@@ -2,6 +2,7 @@ import express, { Router } from "express";
 import fs from "fs";
 import { nanoid } from "nanoid";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
 const router = express.Router();
 
@@ -17,7 +18,7 @@ router.get("/", (req, res) => {
   return res.send(users);
 });
 
-router.post("/", (req, res) => {
+router.post("/signup", (req, res) => {
   const body = req.body;
 
   if (password === "") {
@@ -47,7 +48,7 @@ router.post("/", (req, res) => {
   updateUserFile();
   return res.send(newUsers);
 });
-router.post("/api/users/check", (req, res) => {
+router.post("/signin", (req, res) => {
   const { username, password } = req.body;
 
   if (!username || !password) {
@@ -65,8 +66,20 @@ router.post("/api/users/check", (req, res) => {
       message: "Хэрэглэгчийн нэр зөвхөн жижиг үсэг, тоо, _ агуулах ёстой.",
     });
   }
+  if (!extingUser) {
+    return res.status(404).send({ message: "Wrong credentials" });
+  }
   const extingUser = users.find((user) => user.username === username);
   const isMatching = bcrypt.compareSync(extingUser.password, password);
-  return res.send(isMatching);
+  if (!isMatching) {
+    return res.status(404).send({ message: "Wrong credetials" });
+  }
+
+  const { password: hashedPassword, ...userWithoutPassword } = existingUsers;
+  const accessToken = jwt.sign(userWithoutPassword, "My secret", {
+    expiresIn: "1h",
+  });
+
+  return res.send({ message: "Successfully signedin", accessToken });
 });
 export default router;

@@ -9,7 +9,7 @@ const app = express();
 app.use(express.json());
 
 app.use("/api/todos", todoRouter);
-app.use("/api/users", usersRouter);
+app.use("/api/auth", usersRouter);
 
 app.listen(5000, () => {
   console.log("App is running on http://localhost:5000");
