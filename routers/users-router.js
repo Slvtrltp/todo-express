@@ -1,4 +1,4 @@
-import express, { Router } from "express";
+import express, { raw, Router } from "express";
 import fs from "fs";
 import { nanoid } from "nanoid";
 import bcrypt from "bcrypt";
@@ -20,9 +20,21 @@ router.get("/", (req, res) => {
 
 router.post("/signup", (req, res) => {
   const body = req.body;
-
+  const { username, password } = req.body;
+  const existingUsers = users.find((user) => user.username === username);
+  if (existingUsers) {
+    return res.status(404).send({ message: "Username already existed" });
+  }
   if (password === "") {
     return res.status(404).send({ message: "Нууц үгээ оруулна уу!" });
+  }
+  if (username.trim() === "") {
+    return res.status(404).send({ message: "Хэрэглэгчийн нэрээ оруулна уу!" });
+  }
+  if (!/^[a-z0-9_]+$/.test(username)) {
+    return res.status.send({
+      message: "Хэрэглэгчийн нэр зөвхөн жижиг үсэг, тоо, _ агуулах ёстой.",
+    });
   }
   if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{8,}$/.test(password)) {
     const errors = [];
@@ -35,7 +47,7 @@ router.post("/signup", (req, res) => {
     const errorPassword =
       "Нууц үг нь дараах шаардлагуудыг хангасан байх ёстой. \n " +
       errors.join("\n");
-    return errorPassword;
+    return res.send(errorPassword);
   }
   const hashedPassword = bcrypt.hashSync(password, 10);
 
@@ -50,36 +62,43 @@ router.post("/signup", (req, res) => {
 });
 router.post("/signin", (req, res) => {
   const { username, password } = req.body;
+  const existingUsers = users.find((user) => user.username === username);
 
   if (!username || !password) {
-    return res.status(404).send({ message: "Username already exists" });
+    return res
+      .status(404)
+      .send({ message: "Body must have username and password" });
   }
-  const existingUsers = users.find((username) => username === username);
-  if (existingUsers) {
-    return res.status(404).send({ message: "Username already existed" });
-  }
-  if (username.trim() === "") {
-    return res.status(404).send({ message: "Хэрэглэгчийн нэрээ оруулна уу!" });
-  }
-  if (!/^[a-z0-9_]+$/.test(username)) {
-    return res.status.send({
-      message: "Хэрэглэгчийн нэр зөвхөн жижиг үсэг, тоо, _ агуулах ёстой.",
-    });
-  }
-  if (!extingUser) {
+
+  if (!existingUsers) {
     return res.status(404).send({ message: "Wrong credentials" });
   }
-  const extingUser = users.find((user) => user.username === username);
-  const isMatching = bcrypt.compareSync(extingUser.password, password);
+  const isMatching = bcrypt.compareSync(password, existingUsers.password);
   if (!isMatching) {
     return res.status(404).send({ message: "Wrong credetials" });
   }
 
   const { password: hashedPassword, ...userWithoutPassword } = existingUsers;
-  const accessToken = jwt.sign(userWithoutPassword, "My secret", {
+  const accessToken = jwt.sign(userWithoutPassword, "MySecret", {
     expiresIn: "1h",
   });
 
   return res.send({ message: "Successfully signedin", accessToken });
 });
+router.get("/me", (req, res) => {
+  const rawToken = req.headers.authorization;
+  if (!rawToken.startsWith("Bearr"))
+    return res.status(401).send({ message: "Invalid token" });
+  const token = rawToken.split(" ")[1];
+  console.log(token);
+  let payLoad = null;
+  try {
+    payLoad = jwt.verify(token, "MySecret");
+  } catch (e) {
+    return res.status(401).send({ message: "Invalid token" });
+  }
+  const existingUsers = users.find((user) => user.id === payLoad.id);
+  return res.send(existingUsers);
+});
+
 export default router;
