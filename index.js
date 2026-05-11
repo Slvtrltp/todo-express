@@ -1,6 +1,5 @@
 import express from "express";
-import fs from "fs";
-import { nanoid } from "nanoid";
+
 import cors from "cors";
 
 import todoRouter from "./routers/todo-router.js";

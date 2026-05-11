@@ -3,25 +3,20 @@ import fs from "fs";
 import { nanoid } from "nanoid";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { UserModel } from "../models/user-model.js";
+import { auth } from "../auth-middleware.js";
 
 const router = express.Router();
 
-const usersData = fs.readFileSync("./user.json", "utf-8");
-
-let users = JSON.parse(usersData);
-
-const updateUserFile = () => {
-  fs.writeFileSync("./user.json", JSON.stringify(users), "utf-8");
-};
-
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
+  const users = await UserModel.find();
   return res.send(users);
 });
 
-router.post("/signup", (req, res) => {
+router.post("/signup", async (req, res) => {
   const body = req.body;
   const { username, password } = req.body;
-  const existingUsers = users.find((user) => user.username === username);
+  const existingUsers = await UserModel.findOne({ username: username });
   if (existingUsers) {
     return res.status(404).send({ message: "Username already existed" });
   }
@@ -50,19 +45,15 @@ router.post("/signup", (req, res) => {
     return res.send(errorPassword);
   }
   const hashedPassword = bcrypt.hashSync(password, 10);
-
-  const newUsers = {
-    id: nanoid(),
+  const newUsers = await UserModel.create({
     username,
     password: hashedPassword,
-  };
-  users.push(newUsers);
-  updateUserFile();
+  });
   return res.send(newUsers);
 });
-router.post("/signin", (req, res) => {
+router.post("/signin", async (req, res) => {
   const { username, password } = req.body;
-  const existingUsers = users.find((user) => user.username === username);
+  const existingUsers = await UserModel.findOne({ username: username });
 
   if (!username || !password) {
     return res
@@ -85,20 +76,8 @@ router.post("/signin", (req, res) => {
 
   return res.send({ message: "Successfully signedin", accessToken });
 });
-router.get("/me", (req, res) => {
-  const rawToken = req.headers.authorization;
-  if (!rawToken.startsWith("Bearr"))
-    return res.status(401).send({ message: "Invalid token" });
-  const token = rawToken.split(" ")[1];
-  console.log(token);
-  let payLoad = null;
-  try {
-    payLoad = jwt.verify(token, "MySecret");
-  } catch (e) {
-    return res.status(401).send({ message: "Invalid token" });
-  }
-  const existingUsers = users.find((user) => user.id === payLoad.id);
-  return res.send(existingUsers);
+router.get("/me", auth, (req, res) => {
+  return res.send(req.user);
 });
 
 export default router;

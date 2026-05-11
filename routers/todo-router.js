@@ -1,83 +1,69 @@
 import express, { Router } from "express";
 import fs from "fs";
 import { nanoid } from "nanoid";
+import { TodoModel } from "../models/todo-model.js";
+import { auth } from "../auth-middleware.js";
 
 const router = express.Router();
 
-const todoData = fs.readFileSync("./data.json", "utf-8");
-
-let todos = JSON.parse(todoData);
-
-const todoUpdateDataFile = () => {
-  fs.writeFileSync("./data.json", JSON.stringify(todos), "utf-8");
-};
-
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
+  const todos = await TodoModel.findOne({ userId: req.user.id });
   return res.send(todos);
 });
 
-router.post("/", (req, res) => {
+router.post("/", auth, async (req, res) => {
   const body = req.body;
   const name = body.name;
-  const newTodo = {
-    id: nanoid(),
-    name: name,
-    checked: false,
-  };
+  const newTodo = await TodoModel.create({
+    name,
+    userId: req.user.id,
+  });
 
-  todos.push(newTodo);
-  todoUpdateDataFile();
   return res.send(newTodo);
 });
-router.get("/:id", (req, res) => {
+router.get("/:id", auth, async (req, res) => {
   const id = req.params.id;
-  const todo = todos.find((todo) => todo.id == id);
+  const todo = TodoModel.findOne({ _id: id, userId: req.user.id });
   if (!todo) {
     return res.status(404).send({ message: "Not found" });
   }
-  todoUpdateDataFile();
   return res.send(todo);
 });
-router.delete("/:id", (req, res) => {
+router.delete("/:id", auth, async (req, res) => {
   const id = req.params.id;
-  const deletingItem = todos.find((todo) => todo.id == id);
+  const deletingItem = await TodoModel.findOneAndDelete({
+    _id: id,
+    userId: req.user.id,
+  });
   if (!deletingItem) {
     return res.status(404).send({ message: "Not found" });
   }
-  todos = todos.filter((todo) => todo.id != id);
-  todoUpdateDataFile();
   return res.send(deletingItem);
 });
 
-router.put("/:id", (req, res) => {
+router.put("/:id", auth, async (req, res) => {
   const id = req.params.id;
 
-  const updatingItem = todos.find((todo) => todo.id == id);
-  if (!updatingItem) {
-    return res.status(404).send({ message: "Not found" });
-  }
   const { name, checked } = req.body;
   if (!name || checked !== undefined) {
     return res
       .status(404)
       .send({ message: "Body must have atleast name or checked" });
   }
-  const updatedTodo = {
-    ...updatingItem,
-    ...(name && { name }),
-    ...(checked !== undefined && { checked }),
-  };
-  todos = todos.map((todo) => {
-    if (todo.id == id) {
-      return updatedTodo;
-    }
-    return todo;
-  });
-  todoUpdateDataFile();
+
+  const updatedTodo = await TodoModel.findOneAndUpdate(
+    { _id: id, userId: req.user.id },
+    {
+      ...(name !== undefined && { name }),
+      ...(checked !== undefined && { checked }),
+    },
+    { new: true },
+  );
+  if (!updatedTodo) {
+    return res.status(404).send({ message: "Not found" });
+  }
+
   return res.send(updatedTodo);
 });
 
-// app.put("/:id", (req, res) => {
-//   const id = req.params.id;
-// });
 export default router;
