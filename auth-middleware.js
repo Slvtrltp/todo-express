@@ -3,7 +3,7 @@ import { UserModel } from "./models/user-model.js";
 
 export const auth = async (req, res, next) => {
   const rawToken = req.headers.authorization;
-  if (!rawToken.startsWith("Bearer")) {
+  if (!rawToken?.startsWith("Bearer")) {
     return res.status(401).send({ message: "Invalid token" });
   }
   const token = rawToken.split(" ")[1];

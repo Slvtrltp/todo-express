@@ -2,12 +2,8 @@ import mongoose from "mongoose";
 
 const TodoSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "user",
-    required: true,
-  },
-  checked: { type: Boolean, default: false },
+  checked: { type: Boolean, required: true, default: false },
+  userId: { type: String, required: true },
 });
 
 export const TodoModel =

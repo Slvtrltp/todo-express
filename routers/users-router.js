@@ -1,6 +1,4 @@
 import express, { raw, Router } from "express";
-import fs from "fs";
-import { nanoid } from "nanoid";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { UserModel } from "../models/user-model.js";
@@ -69,9 +67,10 @@ router.post("/signin", async (req, res) => {
     return res.status(404).send({ message: "Wrong credetials" });
   }
 
-  const { password: hashedPassword, ...userWithoutPassword } = existingUsers;
+  const { password: hashedPassword, ...userWithoutPassword } =
+    existingUsers.toJSON();
   const accessToken = jwt.sign(userWithoutPassword, "MySecret", {
-    expiresIn: "1h",
+    expiresIn: "1d",
   });
 
   return res.send({ message: "Successfully signedin", accessToken });
