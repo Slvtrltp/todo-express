@@ -5,7 +5,10 @@ import { auth } from "../auth-middleware.js";
 const router = express.Router();
 
 router.get("/", auth, async (req, res) => {
-  const todos = await TodoModel.find({ userId: req.user._id });
+  const todos = await TodoModel.find({ userId: req.user._id }).populate(
+    "user",
+    "username",
+  );
   return res.send(todos);
 });
 
@@ -24,7 +27,7 @@ router.post("/", auth, async (req, res) => {
 });
 router.get("/:id", async (req, res) => {
   const id = req.params.id;
-  const todo = await TodoModel.findById(id);
+  const todo = await TodoModel.findById(id).populate("user", "username");
   if (!todo) {
     return res.status(404).send({ message: "Todo not found" });
   }
@@ -36,7 +39,7 @@ router.delete("/:id", auth, async (req, res) => {
   const deletingItem = await TodoModel.findOneAndDelete({
     _id: id,
     userId: req.user._id,
-  });
+  }).populate("user", "username");
   if (!deletingItem) {
     return res.status(404).send({ message: "Not found" });
   }
@@ -60,7 +63,7 @@ router.put("/:id", auth, async (req, res) => {
       ...(checked !== undefined && { checked }),
     },
     { new: true },
-  );
+  ).populate("user", "username");
   if (!updatedTodo) {
     return res.status(404).send({ message: "Not found" });
   }
