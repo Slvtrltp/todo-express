@@ -71,3 +71,76 @@ DELETE from users WHERE age<18
 INSERT INTO users (username, password, gender, age, bio) VALUES ('sql_master', 'password123', 'M', 25, 'SQL бол хүч чадал')
 INSERT INTO users (username, password) VALUES ('nmi', 'nmi123') default-оор эрэгтэй болж байна.
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+CREATE TABLE bank_transactions (
+    transaction_id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL,
+    transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    transaction_type VARCHAR(10) CHECK (transaction_type IN ('deposit', 'withdraw')),
+    amount NUMERIC(15, 2) NOT NULL CHECK (amount > 0),
+    balance NUMERIC(15, 2) NOT NULL,
+    description TEXT
+);
+INSERT INTO bank_transactions (user_id, transaction_date, transaction_type, amount, balance, description)
+WITH raw_data AS (
+    SELECT 
+        101 AS user_id, 
+        NOW() - (interval '1 minute' * seq) AS t_date, 
+        CASE WHEN random() > 0.4 THEN 'deposit' ELSE 'withdraw' END AS t_type,
+        (random() * 500 + 10)::NUMERIC(15, 2) AS t_amount, -- 10-аас 510-ын хооронд санамсаргүй дүн
+        'Automated transaction #' || seq AS t_desc
+    FROM generate_series(1, 1000) AS seq
+),
+calculated_data AS (
+    -- 2. Window Function ашиглаж үлдэгдлийг (balance) хуримтлуулж тооцно
+    SELECT 
+        user_id,
+        t_date,
+        t_type,
+        t_amount,
+        SUM(CASE WHEN t_type = 'deposit' THEN t_amount ELSE -t_amount END) 
+            OVER (ORDER BY t_date ASC) AS rolling_balance,
+        t_desc
+    FROM raw_data
+)
+-- 3. Эцсийн үр дүнг хүснэгтэд оруулна
+SELECT user_id, t_date, t_type, t_amount, rolling_balance, t_desc
+FROM calculated_data
+ORDER BY t_date ASC;
+
+select min(amount) from bank_transactions 
+
+select max(amount) from bank_transactions 
+
+select transaction_type from bank_transactions where user_id=101
+
+SELECT SUM(amount) AS total_deposits
+FROM bank_transactions
+WHERE user_id = 101 AND transaction_type = 'deposit';
+
+SELECT *
+FROM bank_transactions
+ORDER BY transaction_type = 'withdraw' DESC LIMIT 5;
+
+select count(*) from bank_transactions where description='ATM withdrawal'
+
+SELECT
+           COUNT(*) AS transaction_count, 
+           SUM(amount) AS total_spent
+    FROM bank_transactions
+    where description='ATM withdrawal' ;
+
