@@ -144,3 +144,18 @@ SELECT
     FROM bank_transactions
     where description='ATM withdrawal' ;
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ERROR: insert or update on table "orders" violates foreign key constraint "orders_user_id_fkey" (SQLSTATE 23503)
